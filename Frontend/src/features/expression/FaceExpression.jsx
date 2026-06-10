@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import {
+  attachCameraStream,
+  classifyEmotion,
+  getFaceLandmarker,
+  stopCameraStream,
+} from "./expressionUtils";
 
 const FaceExpression = () => {
   const videoRef = useRef(null);
@@ -15,69 +20,18 @@ const FaceExpression = () => {
 
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
+      stopCameraStream(streamRef.current);
+      streamRef.current = null;
     };
   }, []);
 
-  const classifyEmotion = (blendShapes) => {
-    const smileLeft =
-      blendShapes.find((shape) => shape.categoryName === "mouthSmileLeft")
-        ?.score || 0;
-    const smileRight =
-      blendShapes.find((shape) => shape.categoryName === "mouthSmileRight")
-        ?.score || 0;
-    const browDown =
-      blendShapes.find((shape) => shape.categoryName === "browDownLeft")
-        ?.score || 0;
-    const jawOpen =
-      blendShapes.find((shape) => shape.categoryName === "jawOpen")?.score || 0;
-
-    if (smileLeft > 0.5 || smileRight > 0.5) {
-      return "😊 Happy";
-    }
-
-    if (browDown > 0.4) {
-      return "😠 Angry";
-    }
-
-    if (jawOpen > 0.6) {
-      return "😲 Surprised";
-    }
-
-    return "😐 Neutral";
-  };
-
   const ensureModelAndCamera = async () => {
     if (!faceLandmarkerRef.current) {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
-      );
-
-      faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(
-        vision,
-        {
-          baseOptions: {
-            modelAssetPath:
-              "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
-          },
-          runningMode: "VIDEO",
-          outputFaceBlendshapes: true,
-          numFaces: 1,
-        },
-      );
+      faceLandmarkerRef.current = await getFaceLandmarker();
     }
 
     if (!streamRef.current) {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      streamRef.current = await attachCameraStream(videoRef.current);
     }
   };
 
@@ -172,14 +126,19 @@ const FaceExpression = () => {
               cursor: loading || analyzing ? "not-allowed" : "pointer",
               fontWeight: 700,
               letterSpacing: "0.02em",
-              boxShadow: loading || analyzing ? "none" : "0 12px 30px rgba(37, 99, 235, 0.35)",
+              boxShadow:
+                loading || analyzing
+                  ? "none"
+                  : "0 12px 30px rgba(37, 99, 235, 0.35)",
             }}
           >
             {analyzing ? "Detecting..." : "Detect Emotion"}
           </button>
         </div>
 
-        {loading && <p style={{ color: "#b9c3dd" }}>Starting camera and model...</p>}
+        {loading && (
+          <p style={{ color: "#b9c3dd" }}>Starting camera and model...</p>
+        )}
         {error && <p style={{ color: "#ff8fa3" }}>{error}</p>}
 
         <video
@@ -210,7 +169,6 @@ const FaceExpression = () => {
           <h2 style={{ margin: 0, fontSize: "1.6rem" }}>{emotion}</h2>
         </div>
       </div>
-
     </div>
   );
 };
