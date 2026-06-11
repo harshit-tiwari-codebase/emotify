@@ -4,7 +4,7 @@ import {
   classifyEmotion,
   getFaceLandmarker,
   stopCameraStream,
-} from "./expressionUtils";
+} from "../utils/expressionUtils";
 
 const FaceExpression = () => {
   const videoRef = useRef(null);
