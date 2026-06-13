@@ -3,6 +3,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const blacklistModel = require("../models/blacklist.models");
+const redis = require("../config/cache");
 
 const registerUser = async (req, res) => {
   try {
@@ -112,14 +113,21 @@ const GetUser = async (req, res) => {
 
 
 const logoutUser = async (req, res) => {
-  const token = req.cookies["LoginToken"];
   res.clearCookie("LoginToken");
   res.clearCookie("registerToken"); 
-  
-  await blacklistModel.create({
-   token
-  })
 
+  const token = req.cookies["LoginToken"];
+
+  if(!token){
+    return res.status(401).json({
+      message: "token is required"
+    })
+  }
+
+  redis.set(token ,Date.now().toString(),"EX",60*60)
+
+  
+  
   return res.status(200).json({ message: "Logged out successfully" });
 };
 
