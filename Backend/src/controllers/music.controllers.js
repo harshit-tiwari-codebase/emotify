@@ -377,10 +377,11 @@ const toggleFavorite = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const { trackId, title, artist, mood, audioUrl, artwork, duration } = req.body;
+    const { title, artist, mood, audioUrl, artwork, duration } = req.body;
+    const trackId = req.body.trackId || req.body.id;
 
     if (!trackId) {
-      return res.status(400).json({ success: false, message: "trackId is required" });
+      return res.status(400).json({ success: false, message: "trackId or id is required" });
     }
 
     const existingIndex = user.favorites.findIndex((f) => f.trackId === trackId);
